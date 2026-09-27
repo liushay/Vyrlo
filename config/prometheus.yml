@@ -1,0 +1,10 @@
+# Prometheus 采集配置（docker-compose 中 deep-agent 的指标采集）
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: "deep-agent"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ["deep-agent:8000"]

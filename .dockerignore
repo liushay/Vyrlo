@@ -1,0 +1,18 @@
+# Docker 构建上下文排除清单
+__pycache__/
+*.py[cod]
+*.pyo
+.git/
+.gitignore
+.pytest_cache/
+data/
+*.db
+*.sqlite3
+tests/
+integration/
+benchmarks/
+batch4_baseline/
+examples/
+*.md
+_d3_verify.py
+_d3_http_smoke.py

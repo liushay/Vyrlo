@@ -1,0 +1,70 @@
+# ============================================================================
+# Deep Agent 完整环境编排
+# ============================================================================
+# 启动：docker-compose up -d --build
+# 端点：
+#   - 健康检查: http://localhost:8000/health
+#   - 指标:     http://localhost:8000/metrics
+#
+# 组件说明：
+#   - deep-agent: 应用服务（内置 local 沙箱 + SQLite 存储 + /metrics 指标端点）。
+#   - prometheus: 可选指标采集（scrape deep-agent 的 /metrics）。
+#   - 沙箱默认走 local（进程内受控目录）；如需 docker 沙箱见 DEPLOY.md。
+# ============================================================================
+
+services:
+  deep-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: deep-agent:latest
+    container_name: deep-agent
+    ports:
+      - "8000:8000"
+    environment:
+      # 覆盖默认配置（APP_ 前缀 + 双下划线层级）。
+      - APP_SERVER__HOST=0.0.0.0
+      - APP_SERVER__PORT=8000
+      - APP_SANDBOX__MODE=local            # local | docker
+      - APP_SANDBOX__BASE_DIR=/app/data/sandbox
+      - APP_STORAGE__BACKEND=sqlite
+      - APP_STORAGE__DB_PATH=/app/data/deep_agent.db
+      - APP_OBSERVABILITY__METRICS_ENABLED=true
+      - APP_OBSERVABILITY__LOG_LEVEL=INFO
+      # LLM 默认 echo（无需外部依赖）；接入真实 LLM 时在此覆盖。
+      - APP_LLM__PROVIDER=${APP_LLM__PROVIDER:-echo}
+      - APP_LLM__MODEL=${APP_LLM__MODEL:-echo-test}
+      - APP_LLM__API_KEY_ENV=${APP_LLM__API_KEY_ENV:-OPENAI_API_KEY}
+      # 透传宿主机 API key（可选）
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    volumes:
+      # SQLite 数据库 + 本地沙箱工作目录持久化
+      - agent-data:/app/data
+      # 日志持久化
+      - agent-logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # 可选：Prometheus 采集 deep-agent 指标
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: deep-agent-prometheus
+    depends_on:
+      - deep-agent
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    restart: unless-stopped
+
+volumes:
+  agent-data:
+  agent-logs:
+  prometheus-data:

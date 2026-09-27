@@ -1,0 +1,112 @@
+# ============================================================================
+# Deep Agent 默认配置
+# ============================================================================
+# 说明：此文件为默认配置，启动时由 runtime.config.loader 加载。
+#       环境变量 APP_ 前缀覆盖优先级高于本文件。
+#       环境变量覆盖规则：APP_ + 双下划线层级分隔。
+#       例如：APP_LLM__PROVIDER=openai → llm.provider = "openai"
+#       敏感信息（API key）通过环境变量注入，不写入此文件。
+# ============================================================================
+
+schema_version: "1.0.0"
+
+# ---- 服务器配置 ----
+server:
+  host: "0.0.0.0"
+  port: 8000
+
+# ---- LLM 配置 ----
+# 主模型 + fallback 模型链（按顺序降级）
+# 若使用 echo provider，无需任何外部 API key
+llm:
+  provider: "echo"              # echo | openai | anthropic | local
+  model: "echo-test"
+  api_key_env: "OPENAI_API_KEY" # 从该环境变量读取 API key
+  base_url: null
+  max_tokens: 4096
+  temperature: 0.0
+  top_p: 1.0
+  max_retries: 3
+  retry_delay: 1.0
+  max_context_tokens: 8192
+  task_routes: {}
+  # Fallback 模型链（主模型失败时按顺序尝试）
+  fallback_models:
+    - provider: "local"
+      model: "qwen2.5:7b"
+      api_key_env: "OPENAI_API_KEY"
+      base_url: "http://localhost:11434/v1"
+
+# ---- 沙箱配置 ----
+sandbox:
+  mode: "local"                 # local | docker
+  base_dir: "/app/data/sandbox"
+  fallback_modes: ["local"]     # docker 不可用时降级到 local
+  image: "sandbox:latest"
+
+# ---- 存储配置 ----
+storage:
+  backend: "sqlite"
+  db_path: "/app/data/deep_agent.db"
+  event_table: "events"
+  session_table: "sessions"
+
+# ---- 可观测性配置 ----
+observability:
+  metrics_enabled: true
+  metrics_path: "/metrics"
+  log_level: "INFO"
+
+# ---- 运行时配置 ----
+runtime:
+  max_iterations: 30
+  max_delegation_depth: 2
+
+# ---- 中间件开关 ----
+# 按名称启用；不在列表中的中间件不加载。
+# 生产环境建议最小集：["conversation_recorder","loop_guard","cost_guard","observability","sandbox"]
+middlewares:
+  enabled:
+    - "conversation_recorder"
+    - "memory_lifecycle"
+    - "memory_injector"
+    - "memory_consolidation"
+    - "tool_result_feedback"
+    - "context_compressor"
+    - "loop_guard"
+    - "cost_guard"
+    - "observability"
+    - "sandbox"
+    - "safety_guard"
+    - "skill_injection"
+    - "skill_observation"
+    - "delegation"
+    - "orchestrator"
+
+# ---- 阈值配置 ----
+# 来源：acceptance-e3.5 校准结论（calibration-v2.md）
+# 所有值均可通过环境变量 APP_THRESHOLDS__... 覆盖
+thresholds:
+  # CostGuard 单会话 token 预算上限（0=不限）
+  # 校准值 1631（P95），中置信度
+  cost_guard_max_tokens: 1631
+
+  # CostGuard 单会话费用上限（USD，0=不限）
+  # 待校准
+  cost_guard_max_cost: 0.0
+
+  # 上下文压缩触发比例阈值
+  # 校准值 0.8（中置信度）
+  context_compressor_threshold_ratio: 0.8
+
+  # 技能选择器质量过滤门槛
+  # 校准值 0.3（中置信度）
+  skill_selector_score_threshold: 0.3
+
+  # 技能变异打分最小变化门槛
+  # 待校准
+  score_delta_min_delta: 0.0
+
+  # episodic→semantic 合并触发条数
+  # 待校准
+  memory_consolidation_threshold: 10

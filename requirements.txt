@@ -1,0 +1,16 @@
+# Deep Agent 运行时依赖（批次 D3 部署基线）
+#
+# 最小可运行集：仅 PyYAML 为必需（用于加载 config/default.yaml）。
+# 其余均为可选依赖——未安装时运行时自动降级（见 runtime/observability/metrics.py
+# 与 runtime/llm_adapter/multi_provider.py 的可选探测逻辑）。
+
+# --- 必需 ---
+PyYAML>=6.0
+
+# --- 可选：LLM 提供商 ---
+# openai>=1.0          # OpenAI / OpenAI 兼容端点
+# anthropic>=0.20      # Anthropic Claude
+
+# --- 可选：可观测性 ---
+# prometheus_client>=0.18   # 可选，内置零依赖实现已够用
+# opentelemetry-api>=1.0    # 可选，内置 span 记录器已够用
